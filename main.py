@@ -1,16 +1,18 @@
 import DataProcessing
 import GraphConstructor
 import GraphAnalysis
-import lin_alg_module
-import json
 
 def main():
-    graph_file = "json_correlation_matrices_neurocon/sub-control032014_AAL116_correlation_matrix.json"
-    graph = GraphConstructor.GraphConstructor(graph_file)
-    graph.construct_graph(tolerance=0.0)
-    #graph.draw_graph()
-    graph_analysis = GraphAnalysis.GraphAnalysis(graph.get_graph())
-    graph_analysis.print_graph_properties()
-
+   data_processing = DataProcessing.DataProcessing()
+   data_processing.convert_to_json_directory('mat_files', 'json_files')
+   graph_constructor = GraphConstructor.GraphConstructor("global_thresholded_correlation_matrices_neurocon/sub-control032014_AAL116_correlation_matrix.csv")
+   graph_constructor.construct_graph_unweighted()
+   graph_constructor.draw_graph()
+   graph_analysis = GraphAnalysis.GraphAnalysis(graph_constructor.get_graph(), matrix=graph_constructor.get_adjacency_matrix())
+   graph_analysis.distribution_of_degree()
+   graph_analysis.small_worldness()
+   graph_analysis.is_symmetric()
+   graph_analysis.graph_stats()
+   #graph_analysis.debug()
 if __name__ == "__main__":
     main()

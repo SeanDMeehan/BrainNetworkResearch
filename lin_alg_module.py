@@ -247,7 +247,7 @@ class lin_alg:
             return False
         for i in range(0,len(matrix)):
             for j in range(0,len(matrix)):
-                if matrix[i][j] != matrix[j][i]:
+                if round(matrix[i][j],4) != round(matrix[j][i],4):
                     return False
         return True
 
