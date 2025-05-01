@@ -1,3 +1,4 @@
+'''This is a module for processing fMRI based BOLD signal time sequence correlation data. It includes the following class: DataProcessing.'''
 from scipy.io import loadmat
 import numpy as np
 import json
@@ -6,6 +7,7 @@ import time
 import csv
 from typing import Literal
 from scipy.stats import norm
+import subprocess
 
 class DataProcessing:
     '''This is a class for processing .mat data. It includes methods for converting data to JSON and CSV formats,
@@ -40,6 +42,9 @@ class DataProcessing:
         inputs:\n
             input_folder_name: str - the name of the folder containing the .mat files\n
             output_folder_name: str - the name of the folder to save the JSON files'''
+        if not os.path.exists(output_folder_name):
+            os.makedirs(output_folder_name)
+            print(f"Directory '{output_folder_name}' created")
         files = os.listdir(input_folder_name)
         self.__start_process_tracker(len(files)-1)
         matrix = {}
@@ -96,21 +101,23 @@ class DataProcessing:
             print('master edge list created')
             return edge_n, edge_sum
         
-    def global_thresholding(self,input_folder_name: str, master_edge_list_name: str, output_folder_name: str, alpha: float):
+    def global_thresholding(self,input_folder_name: str, master_edge_list_name: str, output_folder_name: str, alpha: float, remove_folder: bool = True):
         '''This method performs global thresholding on the data. It creates a new directory for the thresholded files.
         It uses a distribution of all of the weights in the entire data set to perform a Z-value signifigance test for every weight in a given graph. If the p value is less
         than the alpha value the weight becomes 1. Otherwise, the weight becomes 0.\n
         inputs:\n
             input_folder_name: str - the name of the folder containing the .csv files\n
-            master_edge_list_name: str - the name of the master edge list file\n
+            master_edge_list_name: str - the name of the master edge list file. This list will be created.\n
             output_folder_name: str - the name of the folder to save the thresholded files\n
-            alpha: float - the significance level for the thresholding'''
-        if os.path.exists(output_folder_name):
-            os.listdir(output_folder_name)
-            for file in os.listdir(output_folder_name):
-                os.remove(output_folder_name+'/'+file)
-            os.rmdir(output_folder_name)
-        os.makedirs(output_folder_name)
+            alpha: float - the significance level for the thresholding\n
+            remove_folder: bool - whether to remove the output folder if it exists. Default is True.'''
+        if remove_folder:
+            if os.path.exists(output_folder_name):
+                os.listdir(output_folder_name)
+                for file in os.listdir(output_folder_name):
+                    os.remove(output_folder_name+'/'+file)
+                os.rmdir(output_folder_name)
+            os.makedirs(output_folder_name)
         print(f"Directory '{output_folder_name}' created")
         edge_n, edge_sum = self.__global_thresholding_prep(input_folder_name, master_edge_list_name)
         edge_mean = edge_sum/edge_n
@@ -141,4 +148,37 @@ class DataProcessing:
                             writer.writerow(new_row)
                             new_row = []
                 self.__process_tracker()
-                                
+
+    def split_patient_control(self, input_folder: str, output_folder_patient: str, output_folder_control: str):
+        '''This method splits the data into patient and control groups. It creates a new directory for the split files.\n
+        inputs:\n
+            input_folder_name: str - the name of the folder containing the .mat files\n
+            output_folder_name: str - the name of the folder to save the split files\n
+            patient_control: str - 'patient' or 'control' to specify which group to split by'''
+        if os.path.exists(input_folder):
+            for file in os.listdir(input_folder):
+                if file != '.DS_Store':
+                    for inner_file in os.listdir(os.path.join(input_folder, file)):
+                        if inner_file.endswith('AAL116_correlation_matrix.mat'):
+                            print(f"Processing file: {inner_file}")
+                            if 'patient' in file:
+                                if not os.path.exists(output_folder_patient):
+                                    os.makedirs(output_folder_patient)
+                                    print(f"Directory '{output_folder_patient}' created")
+                                elif not os.path.exists(os.path.join(output_folder_patient, file)):
+                                    os.makedirs(os.path.join(output_folder_patient, file))
+                                    print(f"Directory '{output_folder_patient}/{file}' created")
+                                subprocess.run(['cp', os.path.join(input_folder, file, inner_file), os.path.join(output_folder_patient, file, inner_file)])
+                            elif 'control' in file:
+                                if not os.path.exists(output_folder_control):
+                                    os.makedirs(output_folder_control)
+                                    print(f"Directory '{output_folder_control}' created")
+                                elif not os.path.exists(os.path.join(output_folder_patient, file)):
+                                    os.makedirs(os.path.join(output_folder_control, file))
+                                    print(f"Directory '{output_folder_control}/{file}' created")
+                                subprocess.run(['cp', os.path.join(input_folder, file, inner_file), os.path.join(output_folder_control, file, inner_file)])
+                            else:
+                                print(f"File: '{file}' not copied. No patient or control in file name.")
+        else:
+            print(f"Directory '{input_folder}' does not exist.")
+        print('done')

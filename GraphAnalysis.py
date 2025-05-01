@@ -1,13 +1,19 @@
+'''This is a module for analyzing graphs using NetworkX and other custom functions. It contains the following class: GraphAnalysis.'''
 import networkx as nx
 import lin_alg_module
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from tabulate import tabulate
-import lin_alg_module
-
+import csv
 
 class GraphAnalysis():
+    '''This class is designed to analyze graphs using NetworkX and other custom functions. 
+    It provides methods for generating random graphs, calculating clustering coefficients, 
+    characteristic path lengths, and small-worldness, as well as visualizing the results. 
+    The class also includes methods for checking the symmetry of adjacency matrices and printing them.
+    inputs:\n
+        graph: a NetworkX graph object\n
+        matrix: a list of lists representing the adjacency matrix of the graph\n'''
     def __init__(self, graph, matrix=[]):
         self.__graph = graph
         self.__operator = lin_alg_module.lin_alg()
@@ -20,23 +26,42 @@ class GraphAnalysis():
         self.__gaussian_outputs = []
         self.__small_world_coefficient = 0
 
-    def distribution_of_weights(self, show=False, random=False):
-        self.__weight_mean = sum(self.__weight_list)/len(self.__weight_list)
-        self.__weight_standard_deviation = (sum([(x - self.__weight_mean)**2 for x in self.__weight_list])/len(self.__weight_list))**0.5
-        self.__gaussian_outputs = [(1/(self.__weight_standard_deviation*np.sqrt(2*np.pi)))*np.exp(-0.5*((x-self.__weight_mean)/self.__weight_standard_deviation)**2) for x in self.__weight_list]
-        self.__sorted_weight_list, self.__gaussian_outputs = zip(*sorted(zip(self.__weight_list, self.__gaussian_outputs)))
+    def distribution_of_weights(self, show=False, master_weight_list_name="csv_correlation_matrices_neurocon/master_edge_list.csv", master=True):
+        '''This method generates a histogram of the weights of the edges in the graph.
+        It also calculates the mean and standard deviation of the weights and generates a Gaussian distribution based on these values.
+        inputs:\n
+            show: boolean, if True, the histogram will be displayed\n
+            master_weight_list_name: string, the name of the CSV file containing the master weight list\n
+            master: boolean, if True, the method will use the master weight list, otherwise it will use the class's weight list\n'''
+        weight_list = []
+        if master:
+            with open(master_weight_list_name, 'r') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    for entry in row:
+                        if float(entry) != 1.0:
+                            weight_list.append(float(entry))
+                        else:
+                            weight_list.append(0.0)
+        else:
+            weight_list = self.__weight_list
+        self.__weight_mean = sum(weight_list)/len(weight_list)
+        self.__weight_standard_deviation = (sum([(x - self.__weight_mean)**2 for x in weight_list])/len(weight_list))**0.5
+        self.__gaussian_outputs = [(1/(self.__weight_standard_deviation*np.sqrt(2*np.pi)))*np.exp(-0.5*((x-self.__weight_mean)/self.__weight_standard_deviation)**2) for x in weight_list]
+        self.__sorted_weight_list, self.__gaussian_outputs = zip(*sorted(zip(weight_list, self.__gaussian_outputs)))
         if show:
-            plt.hist(self.__weight_list, bins=50, density=True, alpha=0.6, color='g')
+            plt.hist(weight_list, bins=50, density=True, alpha=0.6, color='g')
             plt.plot(self.__sorted_weight_list, self.__gaussian_outputs, color='r')
             plt.title('Distribution of Weights')
             plt.show()
     
     def generate_random_graph_weighted(self, tolerance=0, show=False):
+        '''This method generates a random graph with weights based on the Gaussian distribution of the weights of the edges in the original graph.
+        inputs:\n
+            tolerance: float, the minimum weight for an edge to be included in the random graph\n
+            show: boolean, if True, the graph will be displayed\n'''
         def random_weight():
-#------------------------------------------------------------------------------------------------------------------------------------------------------------#
-#this is place holder code until a more sophisticated method for generating these random values is found
             return abs(random.gauss(self.__weight_mean, self.__weight_standard_deviation))
-#------------------------------------------------------------------------------------------------------------------------------------------------------------#
         random_graph = nx.Graph()
         rand_weight =0
         for i in range(len(self.__graph.nodes())):
@@ -59,6 +84,7 @@ class GraphAnalysis():
             plt.show()
             
     def distribution_of_degree(self):
+        '''This method generates a histogram of the degree distribution of the graph. No inputs are required.'''
         degree_sequence = [degree for node, degree in self.__graph.degree()]
         plt.hist(degree_sequence, bins=range(min(degree_sequence), max(degree_sequence) + 1), align='left', rwidth=0.8)
         plt.title('Degree Distribution')
@@ -66,13 +92,20 @@ class GraphAnalysis():
         plt.ylabel('Frequency')
         plt.show()
       
-    def is_symmetric(self):
-        if self.__operator.is_symmetric(self.__adjacency_matrix):
-            print("The adjacency matrix is symmetric.")
+    def is_symmetric(self, return_value=False):
+        '''This method checks if the adjacency matrix of the graph is symmetric.
+        inputs:\n
+            return_value: boolean, if True, the method will return a boolean value indicating if the matrix is symmetric, otherwise it will print the result\n'''
+        if return_value:
+            return self.__operator.is_symmetric(self.__adjacency_matrix)
         else:
-            print("The adjacency matrix is not symmetric.")
+            if self.__operator.is_symmetric(self.__adjacency_matrix):
+                print("The adjacency matrix is symmetric.")
+            else:
+                print("The adjacency matrix is not symmetric.")
     
     def print_adjacency_matrix(self):
+        '''This method prints the adjacency matrix of the graph. No inputs are required.'''
         self.__operator.print_matrix(self.__adjacency_matrix)
 
     def __generate_random_graph_unweighed(self, show=False):
@@ -85,11 +118,14 @@ class GraphAnalysis():
             self.__random_graph = nx.gnm_random_graph(num_nodes, num_edges)
             if show:
                 pos = nx.circular_layout(self.__random_graph)
-                nx.draw(self.__random_graph, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=300)
+                nx.draw(self.__random_graph, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=150)
                 plt.title("Graph Representation of Random Graph")
                 plt.show()
     
     def clustering_coefficint(self, graph):
+        '''This method calculates the clustering coefficient of the graph.
+        inputs:\n
+            graph: a NetworkX graph object\n'''
         path_lengths_two = 0
         for node in self.__graph.nodes():
             for neighbor in graph.neighbors(node):
@@ -101,43 +137,83 @@ class GraphAnalysis():
         triangles = sum(nx.triangles(graph).values())
         return triangles / path_lengths_two if path_lengths_two > 0 else 0
     
-    def charcacteristic_path_length(self, graph):
+    def characteristic_path_length_1(self, graph):
+        '''This is one of two methods to calculate the characteristic path length of the graph. This method averages the CPLs of all connected components with CPLS>1.
+        inputs:\n
+            graph: a NetworkX graph object\n'''
         path_lengths = []
         for component in nx.connected_components(graph):
             subgraph = graph.subgraph(component)
+            print(f"Subgraph: {subgraph}")
             if nx.average_shortest_path_length(subgraph) > 1:
                 path_lengths.append(nx.average_shortest_path_length(subgraph))
         return sum(path_lengths) / len(path_lengths)
+    
+    def characteristic_path_length_2(self, graph, return_stats=False):
+        '''This is the second method to calculate the characteristic path length of the graph. This method calculates the CPL of the largest connected subgraph of the original graph.\n
+        inputs:\n
+            graph: a NetworkX graph object\n
+            return_stats: boolean, if True, the method will return a dictionary with the CPL, number of nodes, number of edges, and number of subgraphs\n'''
+        subgraphs = sorted([subgraph for subgraph in nx.connected_components(graph)], key=len, reverse=True)
+        largest_subgraph = graph.subgraph(subgraphs[0])
+        cpl = nx.average_shortest_path_length(largest_subgraph)
+        nodes = largest_subgraph.number_of_nodes()
+        edges = largest_subgraph.number_of_edges()
+        num_subgraphs = len(subgraphs)
+        if return_stats:
+            return {
+                "cpl": cpl,
+                "nodes": nodes,
+                "edges": edges,
+                "num_subgraphs": num_subgraphs
+            }
+        return cpl
 
-    def small_worldness(self):
-        self.__generate_random_graph_unweighed(show=True)
+    def small_worldness(self, return_stats=False):
+        '''This method calculates the small-worldness of the graph by comparing the clustering coefficient and characteristic path length of the original graph with those of a random graph Erdos-Renyi graph.
+        inputs:\n
+            return_stats: boolean, if True, the method will return a dictionary with the clustering coefficients and path lengths of the original and random graphs\n'''
+        self.__generate_random_graph_unweighed(show=False)
         CCrand = nx.average_clustering(self.__random_graph)
         CCreal = nx.average_clustering(self.__graph)
         try:
             CPLrand = nx.average_shortest_path_length(self.__random_graph)
         except nx.NetworkXError:
-            CPLrand = self.charcacteristic_path_length(self.__random_graph)
+            CPLrand = self.characteristic_path_length_2(self.__random_graph)
         try:
             CPLreal = nx.average_shortest_path_length(self.__graph)
         except nx.NetworkXError:
-            CPLreal = self.charcacteristic_path_length(self.__graph)
+            CPLreal = self.characteristic_path_length_2(self.__graph)
         self.__small_world_coefficient = (CCreal/CCrand)/(CPLreal/CPLrand)
         print(f"Clustering Coefficient of Random Graph: {CCrand}")
         print(f"Clustering Coefficient of Original Graph: {CCreal}")
         print(f"Characteristic Path Length of Random Graph: {CPLrand}")
         print(f"Characteristic Path Length of Original Graph: {CPLreal}")
         print(f"Small World Coefficient: {self.__small_world_coefficient}")
+        if return_stats:
+            return {
+                "CCrand": CCrand,
+                "CCreal": CCreal,
+                "CPLrand": CPLrand,
+                "CPLreal": CPLreal,
+                "small_world_coefficient": self.__small_world_coefficient
+            }
     
-    def graph_stats(self):
+    def graph_stats(self, return_stats=False):
+        '''This method calculates and prints the number of nodes, edges, possible edges, density, and average degree of the graph.
+        inputs:\n
+            return_stats: boolean, if True, the method will return a dictionary with the graph statistics\n'''
         print(f"Number of nodes: {self.__graph.number_of_nodes()}")
         print(f"Number of edges: {self.__graph.number_of_edges()}")
         print(f"Possible edges: {self.__graph.number_of_nodes()*(self.__graph.number_of_nodes()-1)/2}")
         print(f"Density: {nx.density(self.__graph)}")
         print(f"Average Degree: {sum(dict(self.__graph.degree()).values())/self.__graph.number_of_nodes()}")
+        if return_stats:
+            return {
+                "nodes": self.__graph.number_of_nodes(),
+                "edges": self.__graph.number_of_edges(),
+                "possible_edges": self.__graph.number_of_nodes()*(self.__graph.number_of_nodes()-1)/2,
+                "density": nx.density(self.__graph),
+                "average_degree": sum(dict(self.__graph.degree()).values())/self.__graph.number_of_nodes()
+            }
         
-    def debug(self):
-        self.__generate_random_graph_unweighed(show=True)
-        for node, degree in self.__random_graph.degree():
-            print(f"Node {node} has degree {degree}")
-        triangles =  sum(nx.triangles(self.__random_graph).values())//3
-        print(f"Number of triangles: {triangles}")
