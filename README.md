@@ -2,7 +2,8 @@
 This repository contains all of the code written and used over the course of my senior research project.  To avoid any licensing conflicts, none of the data used during the project will be uploaded to github. Instead, The dataset will be linked below. Additionally, a breif overview of each module will be given here. More information can be found in the modules themselves, which are commented extensively for clarity of use.
 
 Data Set:
-1. neurocon ==> [](https://auckland.figshare.com/articles/dataset/NeurIPS_2022_Datasets/21397377?file=37988397 )
+1. neurocon ==> [https://auckland.figshare.com/articles/dataset/NeurIPS_2022_Datasets/21397377?file=37988397](https://auckland.figshare.com/articles/dataset/NeurIPS_2022_Datasets/21397377?file=37988397 )
+
     -- this paper also contains several other datasets, all of which should be compatible with this code.
 
 Modules:
